@@ -21,11 +21,13 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 容器：全屏 */
+/* 容器：全屏（dvh 动态视口高度，解决移动端地址栏遮挡问题） */
 #game-wrapper {
   position: fixed;
   top: 0; left: 0;
-  width: 100vw; height: 100vh;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;        /* 优先使用动态视口高度 */
   overflow: hidden;
   background: #000;
 }
@@ -35,7 +37,9 @@ html, body {
   display: block;
   position: absolute;
   top: 0; left: 0;
-  width: 100vw; height: 100vh;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;        /* 优先使用动态视口高度 */
   background: #0a0e1a;
   touch-action: none;
 }
@@ -2054,7 +2058,10 @@ class LevelManager {
 // ========== HUD + 菜单 ==========
 
 class HUD {
-  constructor() {}
+  constructor() {
+    // 触摸设备检测（只检测一次）
+    this.isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  }
 
   draw(ctx, game) {
     const p = game.player;
@@ -2088,7 +2095,10 @@ class HUD {
     ctx.shadowBlur = 0;
     ctx.font = '12px Rajdhani, sans-serif';
     ctx.fillStyle = '#7fa9b8';
-    ctx.fillText('[1] 单发  [2]散弹  [3]激光  [Q]大招', pad, H - pad);
+    // 触摸设备显示触屏提示，桌面端显示键位提示
+    ctx.fillText(this.isTouch
+      ? '左屏移动 · 右屏瞄准开火 · 双击右屏大招'
+      : '[1] 单发  [2]散弹  [3]激光  [Q]大招', pad, H - pad);
 
     // 右下：大招冷却 + 命数
     ctx.textAlign = 'right';
@@ -2096,7 +2106,9 @@ class HUD {
     ctx.fillStyle = ready ? COLORS.bomb : '#555';
     ctx.font = 'bold 14px Orbitron, sans-serif';
     ctx.shadowBlur = ready ? 10 : 0; ctx.shadowColor = COLORS.bomb;
-    ctx.fillText(ready ? 'BOMB READY [Q]' : `BOMB ${Math.floor((p.energy / p.bombCost) * 100)}%`, W - pad, H - pad - 18);
+    ctx.fillText(ready
+      ? (this.isTouch ? '大招就绪 双击右屏' : 'BOMB READY [Q]')
+      : `BOMB ${Math.floor((p.energy / p.bombCost) * 100)}%`, W - pad, H - pad - 18);
     ctx.shadowBlur = 0;
     ctx.fillStyle = COLORS.player;
     ctx.font = 'bold 16px Orbitron, sans-serif';
@@ -2122,6 +2134,9 @@ class HUD {
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
 
+    // 触摸摇杆（移动端可视化）
+    this._drawTouchControls(ctx, game);
+
     // 调试
     if (CONFIG.debug.showFps) {
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
@@ -2129,6 +2144,67 @@ class HUD {
       ctx.fillStyle = '#4a6b78';
       ctx.fillText(`FPS ${game.fps}  ENT ${game.enemies.length}  BUL ${game.bullets.active.length}`, pad, pad + 56);
     }
+  }
+
+  // ---------- 触摸摇杆可视化 ----------
+  _drawTouchControls(ctx, game) {
+    if (!this.isTouch) return;
+    const input = game.input;
+    // 摇杆半径按屏幕缩放，窄屏更小
+    const stickR = Math.max(38, Math.min(64, Math.min(game.W, game.H) * 0.14));
+
+    // 左摇杆（移动）
+    if (input.leftStick.active) {
+      this._drawStick(ctx, input.leftStick.cx, input.leftStick.cy, stickR,
+        input.leftStick.dx * stickR, input.leftStick.dy * stickR, COLORS.player);
+    }
+    // 右摇杆（瞄准/开火）
+    if (input.rightStick.active) {
+      this._drawStick(ctx, input.rightStick.cx, input.rightStick.cy, stickR,
+        input.rightStick.dx * stickR, input.rightStick.dy * stickR, COLORS.bulletP);
+    }
+
+    // 未激活时显示半透明提示区（让玩家知道左右分区）
+    if (!input.leftStick.active && !input.rightStick.active) {
+      ctx.save();
+      ctx.globalAlpha = 0.05;
+      ctx.fillStyle = COLORS.player;
+      ctx.fillRect(0, 0, game.W / 2, game.H);
+      ctx.fillStyle = COLORS.bulletP;
+      ctx.fillRect(game.W / 2, 0, game.W / 2, game.H);
+      // 分区文字
+      ctx.globalAlpha = 0.25;
+      ctx.font = 'bold 14px Orbitron, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = COLORS.player;
+      ctx.fillText('◄ 移动', game.W * 0.25, game.H * 0.7);
+      ctx.fillStyle = COLORS.bulletP;
+      ctx.fillText('瞄准/开火 ►', game.W * 0.75, game.H * 0.7);
+      ctx.restore();
+    }
+  }
+
+  _drawStick(ctx, cx, cy, r, dx, dy, color) {
+    ctx.save();
+    // 外环
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, TWO_PI);
+    ctx.stroke();
+    // 内圈淡光
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = color;
+    ctx.fill();
+    // 摇杆头（thumb）
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 14; ctx.shadowColor = color;
+    ctx.beginPath();
+    ctx.arc(cx + dx, cy + dy, r * 0.42, 0, TWO_PI);
+    ctx.fill();
+    ctx.restore();
   }
 
   _bar(ctx, x, y, w, h, ratio, color, label, val) {
@@ -2209,6 +2285,8 @@ class Menu {
 
   _render(name) {
     const best = this.game.bestScore || 0;
+    // 触摸设备检测
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     switch (name) {
       case 'main':
         return `
@@ -2216,11 +2294,18 @@ class Menu {
           <h2>NEON TANK ASSAULT</h2>
           <p>融合飞机大战弹幕玩法的科技风坦克射击</p>
           <div class="keys">
+            ${isTouch ? `
+            <b>左半屏</b><span>虚拟摇杆移动</span>
+            <b>右半屏</b><span>瞄准 + 自动开火</span>
+            <b>双击右屏</b><span>大招（满能量）</span>
+            <b>菜单键</b><span>暂停 / 恢复</span>
+            ` : `
             <b>WASD</b><span>移动</span>
             <b>鼠标</b><span>瞄准</span>
             <b>空格/左键</b><span>开火</span>
             <b>Q / E</b><span>大招（满能量）</span>
             <b>Esc / P</b><span>暂停</span>
+            `}
           </div>
           <button class="menu-btn primary" data-act="start">开始游戏</button>
           <button class="menu-btn" data-act="howto">操作说明</button>
@@ -2230,6 +2315,12 @@ class Menu {
         return `
           <h2>操作说明</h2>
           <div class="keys">
+            ${isTouch ? `
+            <b>左半屏拖动</b><span>虚拟摇杆 8 方向移动</span>
+            <b>右半屏拖动</b><span>炮塔独立瞄准 + 自动开火</span>
+            <b>双击右半屏</b><span>大招：清屏 + 全屏伤害</span>
+            <b>暂停键</b><span>右上角暂停 / 恢复</span>
+            ` : `
             <b>WASD/方向</b><span>8 方向移动</span>
             <b>鼠标</b><span>炮塔独立瞄准</span>
             <b>空格/左键</b><span>开火（可按住连射）</span>
@@ -2237,6 +2328,7 @@ class Menu {
             <b>1 / 2 / 3</b><span>切换武器（需先拾取）</span>
             <b>Esc / P</b><span>暂停</span>
             <b>F1/F2/F3</b><span>调试：碰撞框/慢动作/FPS</span>
+            `}
           </div>
           <p style="margin-top:10px">击杀敌人 → 积攒能量 → 释放大招<br>拾取道具升级武器 / 加护盾 / 召唤僚机</p>
           <button class="menu-btn" data-act="back">返回</button>
