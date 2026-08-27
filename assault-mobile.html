@@ -8,10 +8,10 @@
 <meta name="theme-color" content="#0d1112">
 <title>坦克出击 · 手机版</title>
 <style>
-  html, body { margin:0; padding:0; background:#0d1112; height:100%; overflow:hidden; }
-  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0d1112; }
+  html, body { margin:0; padding:0; background:#0d1112; height:100%; overflow:hidden; touch-action:none; }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0d1112; touch-action:none; }
   canvas { display:block; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
-  /* ---------- 触屏按钮 ---------- */
+  /* ---------- 触屏控件（横屏摇杆版） ---------- */
   #touchui { display:none; }
   .tbtn {
     position:fixed; z-index:10; user-select:none; -webkit-user-select:none;
@@ -20,14 +20,26 @@
     touch-action:none; -webkit-tap-highlight-color:transparent; border-radius:10px;
   }
   .tbtn.on { background:rgba(184,226,74,0.35); }
-  #d-up    { left:70px;  bottom:150px; width:58px; height:58px; line-height:58px; border-radius:12px; }
-  #d-down  { left:70px;  bottom:26px;  width:58px; height:58px; line-height:58px; border-radius:12px; }
-  #d-left  { left:12px;  bottom:88px;  width:58px; height:58px; line-height:58px; border-radius:12px; }
-  #d-right { left:128px; bottom:88px;  width:58px; height:58px; line-height:58px; border-radius:12px; }
-  #fire    { right:28px; bottom:56px;  width:92px; height:92px; line-height:92px; border-radius:50%;
-             font-size:16px; border-color:rgba(255,120,80,0.7); background:rgba(255,90,50,0.18); color:#ffb0a0; }
+  /* 动态虚拟摇杆（按下的位置出现） */
+  #joy { position:fixed; z-index:9; width:130px; height:130px; margin:-65px 0 0 -65px; border-radius:50%;
+         border:2px solid rgba(184,226,74,0.45); background:rgba(184,226,74,0.06); display:none;
+         pointer-events:none; touch-action:none; }
+  #joyKnob { position:absolute; left:50%; top:50%; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%;
+             background:rgba(184,226,74,0.35); border:2px solid rgba(184,226,74,0.7);
+             box-shadow:0 0 14px rgba(184,226,74,0.35); }
+  #fire    { right:26px; bottom:44px; width:104px; height:104px; line-height:104px; border-radius:50%;
+             font-size:17px; border-color:rgba(255,120,80,0.7); background:rgba(255,90,50,0.18); color:#ffb0a0; }
   #fire.on { background:rgba(255,120,60,0.55); }
   #pauseb  { right:16px; top:14px; width:48px; height:40px; line-height:38px; font-size:16px; }
+  /* 竖屏提示（横屏版） */
+  #rotHint { display:none; position:fixed; inset:0; z-index:60; background:#0d1112;
+             flex-direction:column; align-items:center; justify-content:center; gap:18px; color:#b8e24a; }
+  #rotHint .phone { width:46px; height:78px; border:3px solid #b8e24a; border-radius:8px; position:relative;
+                    animation:rot 1.6s ease-in-out infinite; }
+  @keyframes rot { 0%,20%{ transform:rotate(0deg);} 60%,100%{ transform:rotate(90deg);} }
+  #rotHint p { font:bold 16px 'Segoe UI',sans-serif; letter-spacing:2px; color:#dce6da; }
+  #rotHint small { color:#5d6c78; font-size:11px; }
+  #rotHint.show { display:flex; }
   /* ---------- 命名输入框 ---------- */
   #nameInput {
     display:none; position:fixed; left:50%; top:44%; transform:translate(-50%,-50%);
@@ -40,12 +52,14 @@
 <body>
 <div id="wrap"><canvas id="game"></canvas></div>
 <div id="touchui">
-  <div class="tbtn" id="d-up">&#9650;</div>
-  <div class="tbtn" id="d-left">&#9664;</div>
-  <div class="tbtn" id="d-right">&#9654;</div>
-  <div class="tbtn" id="d-down">&#9660;</div>
+  <div id="joy"><div id="joyKnob"></div></div>
   <div class="tbtn" id="fire">FIRE</div>
   <div class="tbtn" id="pauseb">II</div>
+</div>
+<div id="rotHint">
+  <div class="phone"></div>
+  <p>请旋转手机至横屏</p>
+  <small>横屏体验更佳 · 画面更大</small>
 </div>
 <input id="nameInput" maxlength="6" placeholder="输入战机名">
 <script>
@@ -266,20 +280,70 @@ const KEYMAP_P1 = { KeyW:'up', KeyS:'down', KeyA:'left', KeyD:'right', Space:'fi
 const KEYMAP_P2 = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', Enter:'fire', KeyL:'fire', Numpad0:'fire' };
 
 const EDITION = 'mobile';   // auto | pc | mobile（构建脚本按版本替换）
-const IS_TOUCH = EDITION==='mobile' || (EDITION!=='pc' && (('ontouchstart' in window) || (navigator.maxTouchPoints>0)));
+const IS_TOUCH = EDITION==='mobile' || /\btouch\b/.test(location.search) || (EDITION!=='pc' && (('ontouchstart' in window) || (navigator.maxTouchPoints>0)));
 if(IS_TOUCH){
   document.getElementById('touchui').style.display = 'block';
+  /* FIRE 按钮 */
   const bind = (id,key)=>{
     const el = document.getElementById(id);
-    const on = e=>{ e.preventDefault(); Sfx.init(); inputs[0][key]=true; el.classList.add('on'); };
+    const on = e=>{ e.preventDefault(); e.stopPropagation(); Sfx.init(); inputs[0][key]=true; el.classList.add('on'); };
     const off = e=>{ e.preventDefault(); inputs[0][key]=false; el.classList.remove('on'); };
     el.addEventListener('pointerdown', on);
     el.addEventListener('pointerup', off);
     el.addEventListener('pointercancel', off);
     el.addEventListener('pointerleave', off);
   };
-  bind('d-up','up'); bind('d-down','down'); bind('d-left','left'); bind('d-right','right'); bind('fire','fire');
-  document.getElementById('pauseb').addEventListener('pointerdown', e=>{ e.preventDefault(); Sfx.init(); togglePause(); });
+  bind('fire','fire');
+  document.getElementById('pauseb').addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); Sfx.init(); togglePause(); });
+  /* 左半屏动态虚拟摇杆 → 四方向量化 */
+  const joy=document.getElementById('joy'), knob=document.getElementById('joyKnob');
+  let joyId=null, joyOx=0, joyOy=0, joyDir=null;
+  const setDir=d=>{
+    if(d===joyDir) return;
+    joyDir=d;
+    inputs[0].up=d==='up'; inputs[0].down=d==='down';
+    inputs[0].left=d==='left'; inputs[0].right=d==='right';
+  };
+  document.addEventListener('pointerdown', e=>{
+    if(e.pointerType==='mouse') return;                 // 桌面不启用
+    if(e.target instanceof Element && (e.target.closest('.tbtn')||e.target.closest('input')||e.target.closest('button'))) return;
+    if(e.clientX > innerWidth*0.55) return;             // 只用左半屏
+    if(joyId!==null) return;
+    joyId=e.pointerId; joyOx=e.clientX; joyOy=e.clientY;
+    joy.style.left=joyOx+'px'; joy.style.top=joyOy+'px'; joy.style.display='block';
+    knob.style.transform='translate(0,0)';
+    Sfx.init();
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove', e=>{
+    if(e.pointerId!==joyId) return;
+    const dx=e.clientX-joyOx, dy=e.clientY-joyOy, R=46;
+    const len=Math.hypot(dx,dy), cl=Math.min(len,R);
+    const kx=len?dx/len*cl:0, ky=len?dy/len*cl:0;
+    knob.style.transform=`translate(${kx}px,${ky}px)`;
+    if(len<12){ setDir(null); }
+    else if(Math.abs(dx)>Math.abs(dy)){ setDir(dx>0?'right':'left'); }
+    else{ setDir(dy>0?'down':'up'); }
+    e.preventDefault();
+  },{passive:false});
+  const joyEnd=e=>{
+    if(e.pointerId!==joyId) return;
+    joyId=null; joy.style.display='none'; setDir(null);
+  };
+  document.addEventListener('pointerup', joyEnd);
+  document.addEventListener('pointercancel', joyEnd);
+  /* 横屏提示 + 尝试锁定横屏 */
+  const rotHint=document.getElementById('rotHint');
+  const checkRot=()=>{
+    const portrait=innerHeight>innerWidth;
+    rotHint.classList.toggle('show', portrait);
+    if(!portrait && EDITION==='mobile' && (typeof G==='undefined' || G.state==='menu')){
+      try{ screen.orientation.lock('landscape').catch(()=>{}); }catch(err){}
+    }
+  };
+  checkRot();
+  addEventListener('resize', checkRot);
+  addEventListener('orientationchange', ()=>setTimeout(checkRot,350));
 }
 document.addEventListener('contextmenu', e=>e.preventDefault());
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden && G.state==='play' && !G.paused) togglePause(); });
@@ -1232,7 +1296,7 @@ function drawModes(ctx){
   ctx.fillStyle='#eef2ee'; ctx.font='bold 20px Consolas,monospace';
   ctx.fillText('单人闯关', bx+96, 122);
   ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.font='11px Consolas,monospace';
-  ctx.fillText('2 条生命 · WASD+空格 · 触屏双摇杆', bx+96, 150);
+  ctx.fillText('2 条生命 · WASD+空格 · 触屏摇杆', bx+96, 150);
   hit(bx,86,bw,88,()=>startGame('solo'));
   // 双人
   ctx.fillStyle = 'rgba(14,18,20,0.85)'; ctx.fillRect(bx,190,bw,88);
@@ -1489,7 +1553,7 @@ function drawHowto(ctx){
     for(const ln of lines){ ctx.fillText(ln, L+6, y); y += 15; }
     y += 7;
   };
-  sec('移动 / 开火（1P）', ['WASD 移动 · 空格 / J 开火','触屏：左半屏拖动=移动 · 右半屏=瞄准开火']);
+  sec('移动 / 开火（1P）', ['WASD 移动 · 空格 / J 开火','触屏：左半屏摇杆=移动 · 右下 FIRE=开火','手机请横屏，画面更大更爽']);
   sec('双人合作（2P）', ['方向键移动 · 回车 / L 开火','双人各 1 条生命，同屏协作防守基地']);
   sec('道具四分类', [
     '攻击[红] 火力+1 · 三向散射',
