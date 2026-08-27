@@ -83,16 +83,14 @@ const COIN_VAL  = { basic:20,  fast:30,  power:40,  armor:60 };
 const ENEMY_NAME = { basic:'侦察坦克', fast:'猎豹坦克', power:'重炮坦克', armor:'装甲坦克' };
 const ACCENT = '#b8e24a';   // 模板同款荧光绿
 
-/* ---------------- 皮肤（玩家专属，带高光色） ---------------- */
+/* ---------------- 皮肤（玩家专属，按图片五款设计，依次差价500） ---------------- */
 const SKINS = [
-  { id:'classic', name:'经典黄', cost:0,    pal:{ body:'#e8c53a', dark:'#8a6d10', accent:'#ffe840' } },
-  { id:'silver',  name:'银甲',   cost:300,  pal:{ body:'#d8d8e8', dark:'#6a6a7a', accent:'#bfe4ff' } },
-  { id:'flame',   name:'烈焰',   cost:500,  pal:{ body:'#e85030', dark:'#8a1a08', accent:'#ffb060' } },
-  { id:'azure',   name:'幽蓝',   cost:500,  pal:{ body:'#38a8e8', dark:'#10508a', accent:'#7fdfff' } },
-  { id:'violet',  name:'暗夜紫', cost:800,  pal:{ body:'#b050e8', dark:'#5a108a', accent:'#e0a0ff' } },
-  { id:'aurora',  name:'极光',   cost:1000, pal:{ body:'#8ac83a', dark:'#3a6a0a', accent:'#d8ff70' } }
+  { id:'classic', name:'锈蚀钢铁', cost:0,    deco:'rust',   pal:{ body:'#a8502c', dark:'#571e0e', accent:'#d9b98c', tread:'#4a2418', treadLight:'#8a5030' } },
+  { id:'desert',  name:'沙漠风暴', cost:500,  deco:'desert', pal:{ body:'#e6c063', dark:'#8a5a14', accent:'#f08028', tread:'#4a3418', treadLight:'#a87838' } },
+  { id:'lava',    name:'熔岩核心', cost:1000, deco:'lava',   pal:{ body:'#241416', dark:'#0e0608', accent:'#ff5f1e', tread:'#1a1012', treadLight:'#3a2020' } },
+  { id:'candy',   name:'糖果彩虹', cost:1500, deco:'candy',  pal:{ body:'#f27ac0', dark:'#8a5ad0', accent:'#63e2d8', tread:'#5a3a78', treadLight:'#b090e0' } },
+  { id:'royal',   name:'皇家黄金', cost:2000, deco:'royal',  pal:{ body:'#f5eedd', dark:'#a8821c', accent:'#ffd24a', tread:'#5a4a28', treadLight:'#c8a850' } }
 ];
-const skinPal = id => (SKINS.find(s=>s.id===id) || SKINS[0]).pal;
 
 /* ---------------- 商店战备道具（战斗前购买） ---------------- */
 const SHOP_ITEMS = [
@@ -1714,7 +1712,9 @@ function drawEagle(ctx){
 /* ---------------- 绘制：坦克（玩家/敌方差异化） ---------------- */
 function drawTank(ctx,t){
   const isP = t.kind==='player';
-  const pal = isP ? skinPal(t.skin)
+  const sk = isP ? (SKINS.find(s=>s.id===t.skin)||SKINS[0]) : null;
+  const deco = sk ? sk.deco : null;
+  const pal = isP ? sk.pal
     : (t.type==='armor' ? PAL_ENEMY.armor[Math.max(0,4-t.hp)] : PAL_ENEMY[t.type]);
   const cx=t.x+16, cy=t.y+16;
   ctx.save();
@@ -1739,11 +1739,64 @@ function drawTank(ctx,t){
     // 炮塔菱形徽章
     ctx.fillStyle=pal.accent;
     ctx.beginPath(); ctx.moveTo(0,-3); ctx.lineTo(3,1); ctx.lineTo(0,5); ctx.lineTo(-3,1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle=pal.dark; ctx.fillRect(-2,-16,4,16);        // 炮管
+    // 皮肤专属装饰（按参考图五款设计）
+    if(deco==='rust'){          // 锈蚀钢铁：磨损金属补丁 + 锈斑
+      ctx.fillStyle='rgba(217,185,140,.8)';
+      ctx.fillRect(-7,-11,4,3); ctx.fillRect(3,-4,4,3); ctx.fillRect(-6,6,4,3); ctx.fillRect(4,8,3,2);
+      ctx.fillStyle='rgba(60,16,8,.5)';
+      ctx.fillRect(5,-11,3,2); ctx.fillRect(-8,0,2,2); ctx.fillRect(-1,9,4,2);
+    }else if(deco==='desert'){  // 沙漠风暴：炮塔橙色V纹 + 锈斑
+      ctx.fillStyle='#f08028';
+      ctx.fillRect(-5,-5,3,4); ctx.fillRect(2,-5,3,4); ctx.fillRect(-2,-2,4,3);
+      ctx.fillStyle='rgba(200,90,20,.4)';
+      ctx.fillRect(5,-2,3,3); ctx.fillRect(-7,4,3,2); ctx.fillRect(1,8,4,2);
+    }else if(deco==='lava'){    // 熔岩核心：能量裂纹
+      ctx.save();
+      ctx.shadowColor=pal.accent; ctx.shadowBlur=6;
+      ctx.strokeStyle=pal.accent; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(-5,-12); ctx.lineTo(-2,-6); ctx.lineTo(-6,-1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(5,-10); ctx.lineTo(2,-4); ctx.lineTo(6,2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-3,7); ctx.lineTo(0,11); ctx.stroke();
+      ctx.strokeStyle='#ffd24a';
+      ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(-2,2); ctx.stroke();
+      ctx.restore();
+    }else if(deco==='candy'){   // 糖果彩虹：彩色装甲块 + LED灯带
+      ['#ff6ea0','#ffd24a','#63e2d8','#a06ae8'].forEach((c,i)=>{
+        ctx.fillStyle=c; ctx.fillRect(i%2? 3:-8, (i>>1)? 0:-11, 5,5);
+      });
+      ['#ff6ea0','#ffd24a','#63e2d8','#a06ae8'].forEach((c,i)=>{
+        ctx.fillStyle=c; ctx.fillRect(-6+i*3.4, 9, 2,2);
+      });
+    }else if(deco==='royal'){   // 皇家黄金：描金边线 + 蓝盾徽
+      ctx.strokeStyle=pal.accent; ctx.lineWidth=1.5;
+      ctx.strokeRect(-8.5,-12.5,17,25);
+      ctx.fillStyle='#2a3a8a';
+      ctx.beginPath(); ctx.moveTo(5,3); ctx.lineTo(8,6); ctx.lineTo(5,10); ctx.lineTo(2,6); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle=pal.accent; ctx.lineWidth=1; ctx.stroke();
+    }
+    if(deco==='lava'){                                        // 熔岩：荧光炮管
+      ctx.save();
+      ctx.shadowColor='#ff8a2a'; ctx.shadowBlur=8;
+      ctx.fillStyle='#ff5f1e'; ctx.fillRect(-2,-16,4,16);
+      ctx.fillStyle='#ffe08a'; ctx.fillRect(-1,-16,2,4);
+      ctx.restore();
+    }else{
+      ctx.fillStyle=pal.dark; ctx.fillRect(-2,-16,4,16);      // 炮管
+    }
     // 天线
     ctx.strokeStyle=pal.accent; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(-7,-12); ctx.lineTo(-11,-18); ctx.stroke();
     ctx.fillStyle=pal.accent; ctx.fillRect(-12,-20,2,2);
+    if(deco==='royal'){                                       // 皇冠（炮塔后部）
+      ctx.save();
+      ctx.shadowColor='#ffd24a'; ctx.shadowBlur=4;
+      ctx.fillStyle='#ffd24a';
+      ctx.beginPath();
+      ctx.moveTo(-4,4); ctx.lineTo(-3,1); ctx.lineTo(-1.5,3.5); ctx.lineTo(0,0.5);
+      ctx.lineTo(1.5,3.5); ctx.lineTo(3,1); ctx.lineTo(4,4); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-4,4,8,2.5);
+      ctx.restore();
+    }
   } else {
     // 敌方：哑光车身 + 红色传感器眼
     ctx.fillStyle=pal.body; ctx.fillRect(-9,-13,18,26);
