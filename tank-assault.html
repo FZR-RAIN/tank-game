@@ -59,7 +59,8 @@
 <div id="rotHint">
   <div class="phone"></div>
   <p>请旋转手机至横屏</p>
-  <small>横屏体验更佳 · 画面更大</small>
+  <small>若已横屏仍见此页，请关闭系统的「竖屏锁定」</small>
+  <div class="tbtn" id="rotGo" style="position:static;margin-top:10px;padding:12px 34px;font-size:15px;">竖屏继续玩</div>
 </div>
 <input id="nameInput" maxlength="6" placeholder="输入战机名">
 <script>
@@ -332,11 +333,16 @@ if(IS_TOUCH){
   };
   document.addEventListener('pointerup', joyEnd);
   document.addEventListener('pointercancel', joyEnd);
-  /* 横屏提示 + 尝试锁定横屏 */
+  /* 横屏提示 + 尝试锁定横屏（用户可选竖屏继续，绝不卡死） */
   const rotHint=document.getElementById('rotHint');
+  let rotSkip=false;
+  document.getElementById('rotGo').addEventListener('pointerdown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    rotSkip=true; checkRot();
+  });
   const checkRot=()=>{
     const portrait=innerHeight>innerWidth;
-    rotHint.classList.toggle('show', portrait);
+    rotHint.classList.toggle('show', portrait && !rotSkip);
     if(!portrait && EDITION==='mobile' && (typeof G==='undefined' || G.state==='menu')){
       try{ screen.orientation.lock('landscape').catch(()=>{}); }catch(err){}
     }
