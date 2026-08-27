@@ -142,7 +142,7 @@ const EAGLE = { c:12, r:24 };
 const GRASS_LETTERS = [
   { x:1,  y:8, rows:['110011','110011','111111','111111','110011','110011'] },     // H
   { x:9,  y:14,rows:['11000011','11100111','11111111','11011011','11000011','11000011','11000011'] }, // M（加宽加深 V 形，更美观）
-  { x:19, y:8, rows:['110011','110011','011110','011110','110011','110011'] }      // X
+  { x:19, y:8, rows:['1100011','1100011','0110110','0011100','0110110','1100011','1100011'] }      // X（7x7 大交叉，清晰可见）
 ];
 const ENEMY_SPAWNS = [ {x:0,y:0}, {x:12*CELL,y:0}, {x:24*CELL,y:0} ];
 
@@ -382,7 +382,7 @@ function makePlayer(pi){
     name:G.names[pi] || ('P'+(pi+1)),
     x:(pi===0?8:16)*CELL, y:24*CELL, dir:'up',
     speed:75, weapon:(G.preWeapon?3:1),
-    maxHp:2 + G.maxHpBonus, hp:2 + G.maxHpBonus,
+    maxHp:3 + G.maxHpBonus, hp:3 + G.maxHpBonus,   // 受3次攻击才消耗1条生命
     shield:G.preShield?10:2.5, hurtCD:0, spreadT:0,
     lives:(G.mode==='duo'?1:2),
     skin:G.skinSel[pi], fireCD:0, tread:0, alive:true, dead:false, respawnT:0
@@ -755,7 +755,10 @@ function updateEnemy(e,dt){
     const tp = nearestPlayer(e);
     const toP = ()=>dirToward(e, tp.x, tp.y);
     const toBase = ()=>dirToward(e, EAGLE.c*CELL, EAGLE.r*CELL);
-    const alt = ()=>choice(['up','down','left','right'].filter(d=>canGo(e,d))||[e.dir]);
+    const alt = ()=>{
+      const opts = ['up','down','left','right'].filter(d=>canGo(e,d));
+      return opts.length ? choice(opts) : e.dir;   // 全堵死时保持原方向，避免 dir=undefined
+    };
     // 锁定坦克：坚定执行猎杀
     if(e.lock && tp && Math.random()<0.8){
       e.dir = canGo(e,toP()) ? toP() : alt();
@@ -857,6 +860,7 @@ function updatePickups(dt){
   G.powerups = G.powerups.filter(u=>!u.done);
   for(const ch of G.chests){
     ch.t+=dt;
+    if(ch.t>12){ ch.done=true; spark(ch.x+12, ch.y+10); continue; }   // 12秒未拾取自动消失
     for(const p of G.players){
       if(!p.alive) continue;
       const b=tankBox(p);
@@ -1056,9 +1060,7 @@ function drawMenuBG(ctx, t){
   const vg = ctx.createRadialGradient(VIEW_W/2,VIEW_H/2,VIEW_H*0.35, VIEW_W/2,VIEW_H/2,VIEW_W*0.75);
   vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.5)');
   ctx.fillStyle = vg; ctx.fillRect(0,0,VIEW_W,VIEW_H);
-  // 底图（浪尖儿）
-  drawBG(ctx, 0.34);
-  // 四角括号
+  // 四角括号（菜单不显示底图，仅战场显示）
   ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
   const B = 16, M = 8;
   ctx.beginPath();
@@ -1915,6 +1917,7 @@ function drawPowerUp(ctx,u){
   }
 }
 function drawChest(ctx,ch){
+  if(ch.t>9 && Math.sin(ch.t*14)<0) return;   // 最后3秒闪烁预警
   const x=ch.x, y=ch.y + Math.sin(ch.t*4)*2;
   ctx.save();
   ctx.globalAlpha = 0.25 + 0.15*Math.sin(ch.t*6);
@@ -2017,7 +2020,7 @@ function drawPlayField(ctx){
   }
   ctx.fillStyle='#000';
   ctx.fillRect(-8,-8,PLAY_W+16,PLAY_H+16);
-  drawBG(ctx, 0.13);   // 战斗场景淡底图
+  drawBG(ctx, 0.28);   // 战场底图（明显可见）
   drawTerrain(ctx);
   drawEagle(ctx);
   for(const u of G.powerups) drawPowerUp(ctx,u);
