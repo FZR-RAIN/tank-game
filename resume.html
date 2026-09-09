@@ -2,60 +2,106 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>黄漫雪 · 个人简历</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<title>黄漫雪 · 个人简历 · THE SEEKER</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif}
-.card{background:#fff;border-radius:16px;padding:40px 32px;text-align:center;
-  max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.card .avatar{width:80px;height:80px;border-radius:50%;margin:0 auto 16px;
-  background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;
-  justify-content:center;font-size:36px;color:#fff;font-weight:bold}
-.card h1{font-size:22px;color:#333;margin-bottom:4px}
-.card .sub{font-size:13px;color:#999;margin-bottom:24px}
-.card .btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;
-  background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:16px;
-  text-decoration:none;font-weight:500;cursor:pointer;transition:transform .2s}
-.card .btn:active{transform:scale(.97)}
-.card .tip{margin-top:16px;font-size:12px;color:#bbb}
-.loader{width:24px;height:24px;border:3px solid #eee;border-top-color:#764ba2;
-  border-radius:50%;margin:0 auto 16px;animation:spin 1s linear infinite}
+:root{--c1:#667eea;--c2:#764ba2;--bg:#f5f6fa}
+body{min-height:100dvh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--c1)0%,var(--c2)100%);
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  padding:20px}
+.card{background:#fff;border-radius:20px;padding:36px 28px;text-align:center;
+  max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.25);
+  position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--c1),var(--c2))}
+.avatar{width:72px;height:72px;border-radius:50%;margin:0 auto 14px;
+  background:linear-gradient(135deg,var(--c1),var(--c2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#fff;font-weight:700;letter-spacing:2px}
+h1{font-size:20px;color:#2d2d2d;margin-bottom:2px;font-weight:600}
+.sub{font-size:12px;color:#aaa;margin-bottom:6px}
+.tag{display:inline-block;font-size:11px;color:var(--c2);background:#f0f0fa;
+  padding:3px 10px;border-radius:20px;margin-bottom:20px}
+.status{font-size:13px;color:#999;line-height:1.6}
+.loader{width:28px;height:28px;border:3px solid #eee;border-top-color:var(--c2);
+  border-radius:50%;margin:0 auto 12px;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;
+  font-size:15px;text-decoration:none;font-weight:500;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;margin-top:8px}
+.btn:active{transform:scale(.97);box-shadow:0 4px 16px rgba(118,75,162,.4)}
+.btn.outline{background:#fff;color:var(--c2);border:2px solid var(--c2)}
+.hidden{display:none}
+.foot{margin-top:18px;font-size:11px;color:#ccc;line-height:1.5}
+.dots{display:inline-block;width:4px;text-align:left;animation:dots 1.4s steps(4) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}100%{content:''}}
+.dots::after{content:'';animation:dots2 1.4s steps(4) infinite}
+@keyframes dots2{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="avatar">黄</div>
-  <h1>黄漫雪 · THE SEEKER</h1>
-  <p class="sub">现代水产养殖技术 · AI 应用探索者</p>
-  <div id="status">
+  <h1>黄漫雪</h1>
+  <p class="sub">THE SEEKER · 探索者牌</p>
+  <span class="tag">现代水产养殖技术 · AI 应用探索者</span>
+
+  <div id="loading">
     <div class="loader"></div>
-    <p style="font-size:13px;color:#999">正在打开简历...</p>
+    <p class="status">正在打开简历<span class="dots"></span></p>
   </div>
-  <a id="btn" class="btn" href="https://5ab03f7af9334fe6b59f68ca76f9cfb3.app.workbuddy.link" style="display:none">进入简历 ✦</a>
-  <p class="tip">手机电脑均可打开 · 微信QQ直接点击</p>
+
+  <div id="buttons" class="hidden">
+    <a class="btn" id="go" href="#">进入简历 ✦</a>
+    <a class="btn outline" id="copy" href="javascript:void(0)">复制链接</a>
+  </div>
+
+  <p class="foot">手机 / 电脑 / 微信 / QQ 均可直接打开<br>GitHub Pages 托管 · 永久有效</p>
 </div>
+
 <script>
-// 自动跳转 + 微信/QQ兼容处理
 var TARGET='https://5ab03f7af9334fe6b59f68ca76f9cfb3.app.workbuddy.link';
 var ua=navigator.userAgent.toLowerCase();
-var inWechat=ua.indexOf('micromessenger')>-1;
-var inQQ=ua.indexOf('qq/')>-1||ua.indexOf('qqbrowser')>-1;
+var isWechat=ua.indexOf('micromessenger')>-1;
+var isQQ=ua.indexOf('qq/')>-1||ua.indexOf('qqbrowser')>-1;
 
-if(inWechat){
-  // 微信内置浏览器直接跳转
-  setTimeout(function(){location.href=TARGET},800);
-}else{
-  // 其他浏览器自动跳转，3秒后显示手动按钮
-  location.href=TARGET;
+// 设置按钮链接
+document.getElementById('go').href=TARGET;
+
+// 自动跳转逻辑
+window.onload=function(){
   setTimeout(function(){
-    document.getElementById('status').style.display='none';
-    document.getElementById('btn').style.display='block';
-  },3000);
-}
+    // 微信内:直接跳转（微信会拦截部分外链，但workbuddy域名通常可以）
+    // 非微信:直接跳转
+    try{
+      window.location.href=TARGET;
+    }catch(e){}
+
+    // 3秒后如果还在当前页，显示手动按钮
+    setTimeout(function(){
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('buttons').classList.remove('hidden');
+    },3000);
+  },500);
+};
+
+// 复制链接
+document.getElementById('copy').addEventListener('click',function(){
+  var input=document.createElement('input');
+  input.value=TARGET;
+  document.body.appendChild(input);
+  input.select();
+  try{
+    document.execCommand('copy');
+    this.textContent='已复制 ✓';
+    setTimeout(function(){this.textContent='复制链接'}.bind(this),2000);
+  }catch(e){}
+  document.body.removeChild(input);
+});
 </script>
 </body>
 </html>
